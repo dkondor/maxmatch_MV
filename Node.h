@@ -30,10 +30,10 @@ struct MVNode{
 	/* do not store a pointer to the edges, only an index into the edges array stored in the MVGraph struct */
 	size_t edges_idx;
 	unsigned int degree;
-	int min_level;
-	int max_level;
-	int odd_level;
-	int even_level;
+	unsigned int min_level;
+	unsigned int max_level;
+	unsigned int odd_level;
+	unsigned int even_level;
 	nodeid match;
 	nodeid bud;
 	nodeid above;
@@ -85,11 +85,11 @@ struct MVNode{
 
 
 
-inline void set_min_level(MVNode& n, int level) { n.set_min_level(level); }
-inline void set_max_level(MVNode& n, int level) { n.set_max_level(level); }
+inline void set_min_level(MVNode& n, unsigned int level) { n.set_min_level(level); }
+inline void set_max_level(MVNode& n, unsigned int level) { n.set_max_level(level); }
 inline bool outer(const MVNode& n) { return n.outer(); }
 inline bool inner(const MVNode& n) { return n.inner(); }
-inline int bud(const MVNode& n) { return n.bud; }
+inline nodeid bud(const MVNode& n) { return n.bud; }
 
 //~ MVNodeP bud_star(MVNodeP c);
 //~ int bud_star_includes(MVNodeP c,MVNodeP goal);

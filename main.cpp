@@ -50,6 +50,7 @@ int main(int argc, char** argv){
 	}
 	MVGraph g(g1);
 	
+	//~ fprintf(stderr,"%u\n",g.matchnum);
 	
 	struct timeval start,end;  
 	gettimeofday(&start, NULL);
@@ -58,7 +59,7 @@ int main(int argc, char** argv){
 	gettimeofday(&end, NULL);
 	
 	fprintf(stderr,"%f\n",dt(start,end));
-	fprintf(stderr,"%i\n",g.matchnum);
+	fprintf(stderr,"%u\n",g.matchnum);
 	
 	g.write_matches(stdout,[ids](nodeid i){ return ids[i]; });
 	

@@ -10,12 +10,15 @@
  * 
  * auto itbg = make_zip_it(v1.begin(),v2.begin());
  * auto itend = make_zip_it(v1.end(),v2.end());
- * std::sort(itbg,itend);
+ * std::sort(itbg,itend,[](const auto& x, const auto& y){return x.first < y.first;});
  * 
- * itbg->first() == *(v1.begin());
- * itbg->second() == *(v2.begin());
+ * // the following hold
+ * itbg.first() == *(v1.begin());
+ * itbg.second() == *(v2.begin());
  * 
+ * // assignment
  * std::pair<int,double> val = *itbg;
+ * *itbg = std::make_pair(1,2.0);
  * 
  * Copyright 2018 Daniel Kondor <kondor.dani@gmail.com>
  * 
@@ -70,10 +73,12 @@ struct refpair : std::pair<T1&,T2&> {
 	refpair<T1,T2>& operator = (const std::pair<T1,T2>& pair) {
 		first = pair.first;
 		second = pair.second;
+		return *this;
 	}
 	refpair<T1,T2>& operator = (std::pair<T1,T2>&& pair) {
 		first = std::move(pair.first);
 		second = std::move(pair.second);
+		return *this;
 	}
 	
 	void swap(refpair<T1,T2>& pair) {

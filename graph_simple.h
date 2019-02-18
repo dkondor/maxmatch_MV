@@ -107,7 +107,7 @@ class graph {
 	/*	void write_graph(FILE* f, std::function<unsigned int(unsigned int)> ids = [](const unsigned int& x) {return x;}) {
 			if(!f) return;
 			for(auto it = edges_begin(); it != edges_end(); ++it) fprintf(f,"%u\t%u\n",ids(it->first),ids(it->second));
-		}
+		}*/
 		/* same, but use a std::vector as the ID mapping 
 		void write_graph(FILE* f, const std::vector<unsigned int>& ids) {
 			write_graph(f,[ids](const unsigned int& x){return ids[x];});
@@ -125,13 +125,13 @@ class graph {
 		const size_t EDGES_GROW = 33554432; // allocate memory for edges in 128MB chunks
 		const size_t NODES_GROW = 262144; // allocate memory for nodes in 1M and 2M chunks
 		
-		std::vector<unsigned int> edges_vect; /* optionally, the edges are stored in an std::vector<int> received from
-			the caller; in this case edges == edges_vect.data() and should not be freed later */
-		bool edges_owned; /* this flag determines whether the edges array should be freed by the destructor */
-		
 		/* size of the edges and node arrays, and functions to grow them */	
 		size_t edges_size;
 		size_t nodes_size;
+		
+		std::vector<unsigned int> edges_vect; /* optionally, the edges are stored in an std::vector<int> received from
+			the caller; in this case edges == edges_vect.data() and should not be freed later */
+		bool edges_owned; /* this flag determines whether the edges array should be freed by the destructor */
 		
 		int grow_nodes() {
 			size_t new_size = nodes_size + NODES_GROW;
@@ -168,7 +168,7 @@ class graph {
 		/* 3-4. common interface for creating the edges after copying the out-edges to the edges array and using a separate in-edges array */
 		int create_graph(unsigned int* in_edges, std::unordered_map<unsigned int,unsigned int>* ids_map);
 		
-		unsigned int real_deg(int n) const;
+		unsigned int real_deg(unsigned int n) const;
 };
 
 

@@ -3,7 +3,7 @@
 
 void MVGraph::max_match() {
 	//for once set the levels by hand, next time reset does this
-	for(int i=0;i<nodes.size();i++) {
+	for(unsigned int i=0;i<nodes.size();i++) {
 		if(nodes[i].match == UNMATCHED) {
 			add_to_level(0,i);
 			nodes[i].set_min_level(0);
@@ -21,10 +21,8 @@ void MVGraph::max_match() {
 
 bool MVGraph::max_match_phase() {
 	bool found = false;
-	int i;
-
-  
-	for(int i=0;i<nodes.size()/2+1 && (!found);i++){
+	
+	for(unsigned int i=0;i<nodes.size()/2+1 && (!found);i++){
 		//printf(":: %i %i \n",g->todonum ,g->bridgenum);
 		if(todonum<=0 && bridgenum<=0){
 			return false;
@@ -36,9 +34,9 @@ bool MVGraph::max_match_phase() {
 }
 
 
-inline void MVGraph::step_to(nodeid to, nodeid from, int level) {
+inline void MVGraph::step_to(nodeid to, nodeid from, unsigned int level) {
 	level++; 
-	int tl = nodes[to].min_level;
+	unsigned int tl = nodes[to].min_level;
 	if(tl >= level) {
 	    if(tl != level){
 			add_to_level(level,to);
@@ -51,8 +49,8 @@ inline void MVGraph::step_to(nodeid to, nodeid from, int level) {
 	}
 	else {
 	    //found bridge
-	    int ten = tenacity(to,from);
-	    if(ten == -1) {
+	    unsigned int ten = tenacity(to,from);
+	    if(ten == UNSET) {
 			//hanging bridge
 			nodes[to].hanging_bridges.push_back(from);
 			nodes[from].hanging_bridges.push_back(to);
@@ -62,7 +60,7 @@ inline void MVGraph::step_to(nodeid to, nodeid from, int level) {
 }
 
 
-void MVGraph::MIN(int i) {
+void MVGraph::MIN(unsigned int i) {
 	if(levels.size() <= i) {
 		//~ fprintf(stderr,"MVGraph::MIN(): no nodes on level %d!\n",i);
 		return;
@@ -71,8 +69,8 @@ void MVGraph::MIN(int i) {
 		todonum--;
 		MVNode& n = nodes[current];
 		if(i%2==0) {
-			for(int j=0;j<n.degree;j++) {
-				int edge = edges[n.edges_idx + j];
+			for(unsigned int j=0;j<n.degree;j++) {
+				unsigned int edge = edges[n.edges_idx + j];
 				if(edge != n.match) step_to(edge,current,i);
 			}
 		}
@@ -82,7 +80,7 @@ void MVGraph::MIN(int i) {
 
 
 //~ int last_n1 = UNSET,last_n2 = UNSET;
-bool MVGraph::MAX(int i) {
+bool MVGraph::MAX(unsigned int i) {
 	bool found = false;
 	if(bridges.size() <= i) {
 		//~ fprintf(stderr,"MVGraph::MAX(): no bridges on level %d!\n",i);
@@ -94,7 +92,9 @@ bool MVGraph::MAX(int i) {
 		nodeid n2 = current.second;
 		if(nodes[n1].deleted || nodes[n2].deleted) continue;
 		int result = DDFS(n1,n2);
-		if(result == DDFS_ERROR) { /* ??? */ }
+		if(result == DDFS_ERROR) { 
+			throw std::runtime_error("Error in DDFS!\n");
+		}
 		if(result == DDFS_EMPTY) continue;
 		if(result == DDFS_PATH) {
 			find_path(n1,n2);
@@ -107,10 +107,13 @@ bool MVGraph::MAX(int i) {
 		else {
 			/* Found a petal */
 			nodeid b = last_ddfs.bottleneck;
-			int current_ten = i*2+1;
+			unsigned int current_ten = i*2+1;
 			for(nodeid& itt : last_ddfs.nodes_seen) {
 				nodes[itt].bud = b; /* set the bbud for all nodes */
 				/* set the maxlevel */
+				if(current_ten < nodes[itt].min_level) {
+					throw std::runtime_error("Negative level found!\n");
+				}
 				nodes[itt].set_max_level(current_ten - nodes[itt].min_level);
 				add_to_level(nodes[itt].max_level,itt);
 				for(nodeid& hanging : nodes[itt].hanging_bridges) {

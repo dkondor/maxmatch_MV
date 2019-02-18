@@ -38,7 +38,7 @@ struct MVGraph{
 	std::vector<MVEdge> red_stack;
 	std::vector<nodeid> path_found;
 	DDFS_result last_ddfs;
-	int matchnum;
+	unsigned int matchnum;
 	int bridgenum;
 	int todonum;
 	
@@ -47,22 +47,22 @@ struct MVGraph{
 	//~ int load_graph(int size, std::vector<std::pair<int,int> >& edgelist);
 	//~ int load_graph(edgelist<int>& l);
 	void greedy_init();
-	MVGraph():edges(0),matchnum(0),bridgenum(0),todonum(0),edges_size(0) { }
+	MVGraph():edges(0),edges_size(0),matchnum(0),bridgenum(0),todonum(0) { }
 	MVGraph(graph& g); /* default mode of construction is to convert a simple graph class */
 	~MVGraph() { if(edges && edges_owned) free(edges); }
 	void reset();
 	
-	void add_to_level(int level, nodeid node);
-	void add_to_bridges(int level, nodeid n1, nodeid n2);
+	void add_to_level(unsigned int level, nodeid node);
+	void add_to_bridges(unsigned int level, nodeid n1, nodeid n2);
 	
 	/* main matching functions */
 	void max_match();
 	bool max_match_phase();
 	
-	void MIN(int i);
-	bool MAX(int i);
+	void MIN(unsigned int i);
+	bool MAX(unsigned int i);
 	
-	void step_to(nodeid to, nodeid from,int level);
+	void step_to(nodeid to, nodeid from, unsigned int level);
 	
 	/* output matches found */
 	void write_matches(FILE* f) const;
@@ -124,7 +124,7 @@ struct MVGraph{
 	inline nodeid bud(nodeid n) const { return nodes[n].bud; }
 	
 	
-	inline int tenacity(nodeid n1, nodeid n2) const {
+	inline unsigned int tenacity(nodeid n1, nodeid n2) const {
 		if(nodes[n1].match == n2) { /* matched bridge */
 			if(nodes[n1].odd_level != UNSET && nodes[n2].odd_level!= UNSET)
 				return nodes[n1].odd_level + nodes[n2].odd_level + 1;
@@ -132,7 +132,7 @@ struct MVGraph{
 		else /* unmatched bridge */
 			if(nodes[n1].even_level != UNSET && nodes[n2].even_level!= UNSET)
 				return nodes[n1].even_level + nodes[n2].even_level + 1;
-		return -1;
+		return UNSET;
 	}
 	
 	size_t real_deg(nodeid n);

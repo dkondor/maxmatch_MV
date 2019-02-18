@@ -181,43 +181,6 @@ static void read_table_init(read_table* r, FILE* f_) {
 	r->flags = READ_TABLE_ALLOW_NAN_INF;
 }
 
-/* create new read_table object, reading from the given file
- * note: the file is not closed when deallocating the read_table struct */
-static read_table* read_table_new(FILE* f_) {
-	if(!f_) return 0;
-	read_table* r = (read_table*)malloc(sizeof(read_table));
-	if(!r) return 0;
-	read_table_init(r,f_);
-	return r;
-}
-
-/* create new read_table object, opening the given file for reading
- * note: this will close the file when deallocating the read_table struct */
-static read_table* read_table_new_fn(const char* fn_) {
-	if(!fn_) return 0;
-	read_table* r = (read_table*)malloc(sizeof(read_table));
-	if(!r) return 0;
-	FILE* f_ = fopen(fn_,"r");
-	if(!f_) {
-		fprintf(stderr,"read_table_new_fn(): error opening file %s!\n",fn_);
-		free(r);
-		return 0;
-	}
-	read_table_init(r,f_);
-	r->fn = fn_;
-	r->flags |= READ_TABLE_CLOSE_FILE;
-	return r;
-}
-
-/* free read_table struct
- * note that this does not close the file, that is the caller's responsibility! */
-static void read_table_free(read_table* r) {
-	if(r) {
-		if(r->buf) free(r->buf);
-		if(r->flags & READ_TABLE_CLOSE_FILE) if(r->f) fclose(r->f);
-		free(r);
-	}
-}
 
 /* read a new line (discarding any remaining data in the current line)
  * returns 0 if a line was read, 1 on failure
@@ -514,7 +477,7 @@ static int read_table_double(read_table* r, double* d) {
 	*d = strtod(r->buf + r->pos, &c2);
 	/* advance position after the number, check if there is proper field separator */
 	if(read_table_post_check(r,c2)) return 1;
-	if(r->flags & READ_TABLE_ALLOW_NAN_INF == 0) {
+	if((r->flags & READ_TABLE_ALLOW_NAN_INF) == 0) {
 		if(_isnan(*d) || _isinf(*d)) {
 			r->last_error = T_NAN;
 			return 1;
@@ -541,56 +504,6 @@ static int read_table_double_limits(read_table* r, double* d, double min, double
 	return 0;
 }
 
-
-/* auxilliary functions for setting parameters and getting diagnostic */
-
-/* set delimiter character (default is spaces and tabs) */
-static void read_table_set_delim(read_table* r, char delim) {
-	if(r) r->delim = delim;
-}
-/* set delimiter character (default is spaces and tabs) */
-static char read_table_get_delim(const read_table* r) {
-	if(r) return r->delim;
-	else return 0;
-}
-/* set comment character (default is none) */
-static void read_table_set_comment(read_table* r, char comment) {
-	if(r) r->comment = comment;
-}
-/* get comment character (default is none) */
-static char read_table_get_comment(const read_table* r) {
-	if(r) return r->comment;
-	else return 0;
-}
-
-/* get last error code */
-static enum read_table_errors read_table_get_last_error(const read_table* r) {
-	if(r) return r->last_error;
-	else return T_TYPE;
-}
-static const char* read_table_get_last_error_str(const read_table* r) {
-	if(r) return get_error_desc(r->last_error);
-	else return 0;
-}
-
-
-/* get current position in the file */
-static uint64_t read_table_get_line(const read_table* r) {
-	if(r) return r->line;
-	else return 0;
-}
-static size_t read_table_get_pos(const read_table* r) {
-	if(r) return r->pos;
-	else return 0;
-}
-static size_t read_table_get_col(const read_table* r) {
-	if(r) return r->col;
-	else return 0;
-}
-/* set filename (for better formatting of diagnostic messages) */
-static void read_table_set_fn(read_table* r, const char* fn) {
-	if(r) r->fn = fn;
-}
 
 /* write formatted error message to the given stream */
 static void read_table_write_error(const read_table* r, FILE* f) {
@@ -644,75 +557,8 @@ template<> int read_table_next(read_table* r, std::pair<double,double>& p) {
 	p = std::make_pair(x,y);
 	return 0;
 }
-/* dummy struct to be able to call the same interface to skip data
- * (useful if used with the variadic template below) */
-struct read_table_skip_t { };
-static const read_table_skip_t _read_table_skip1;
-static const read_table_skip_t& read_table_skip() { return _read_table_skip1; }
-template<> int read_table_next(read_table* r, const read_table_skip_t& skip)
-	{ return read_table_skip(r); }
-template<> int read_table_next(read_table* r, read_table_skip_t& skip)
-	{ return read_table_skip(r); }
 
-/* struct to represent values with bounds */
-template<class T>
-struct read_bounds_t {
-	read_bounds_t(T& val_, T min_, T max_):val(val_),min(min_),max(max_) { }
-	T& val;
-	T min;
-	T max;
-};
-template<class T> static read_bounds_t<T> read_bounds(T& val_, T min_, T max_) {
-	return read_bounds_t<T>(val_,min_,max_);
-}
-/* shortcut to read coordinate pairs in the "obvious" format, i.e. the first
- * value should be between -180.0 and 180.0, the second value should be
- * between -90.0 and 90.0
- * -- note: this is the format that is obvious to me, different use cases
- * might have the coordinates in different order or the range of longitudes
- * could be 0 to 360 or even unbounded */
-static read_bounds_t<std::pair<double,double> > read_bounds_coords(std::pair<double,double>& coords) {
-	return read_bounds_t<std::pair<double,double> >(coords,
-		std::make_pair(-180.0,-90.0),std::make_pair(180.0,90.0));
-}
 
-/* overload with the previous
- * example usage:
-uint32_t x;
-read_table_next(r,read_bounds(&x,1000U,2000U));
-*/
-template<class T> static int read_table_next(read_table* r, read_bounds_t<T> b) {
-	if(r) r->last_error = T_TYPE;
-	return 1;
-}
-template<> int read_table_next(read_table* r, read_bounds_t<int32_t> b) {
-	return read_table_int32_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<uint32_t> b) {
-	return read_table_uint32_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<int64_t> b) {
-	return read_table_int64_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<uint64_t> b) {
-	return read_table_uint64_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<int16_t> b) {
-	return read_table_int16_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<uint16_t> b) {
-	return read_table_uint16_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<double> b) {
-	return read_table_double_limits(r,&b.val,b.min,b.max);
-}
-template<> int read_table_next(read_table* r, read_bounds_t<std::pair<double,double> > b) {
-	double x,y;
-	if(read_table_double_limits(r,&x,b.min.first,b.max.first) ||
-		read_table_double_limits(r,&y,b.min.second,b.max.second)) return 1;
-	b.val = std::make_pair(x,y);
-	return 0;
-}
 
 
 /* recursive templated function to convert whole line using one function call only
@@ -848,8 +694,6 @@ struct read_table2 : public read_table {
 		
 		/* write formatted error message to the given stream */
 		void write_error(FILE* f) const { read_table_write_error(this,f); }
-		
-		static const read_table_skip_t* skip() { return &_read_table_skip1; }
 };
 
 #endif /* __cplusplus */

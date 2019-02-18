@@ -114,7 +114,7 @@ int graph::read_graph(FILE* f, bool partitioned, std::vector<unsigned int>* ids)
 }
 
 
-unsigned int graph::real_deg(int n) const {
+unsigned int graph::real_deg(unsigned int n) const {
 	uint64_t deg;
 	if(n+1 < nnodes) deg = idx[n+1] - idx[n];
 	else deg = nedges - idx[n];
@@ -125,7 +125,7 @@ unsigned int graph::real_deg(int n) const {
 int graph::make_symmetric() {
 	/* 1. check if the graph is symmetric, increase node degrees */
 	size_t extra_size = 0;
-	for(int i=0;i<nnodes;i++) {
+	for(unsigned int i=0;i<nnodes;i++) {
 		/* note: degrees should not be relied during running, they are being updated
 		 * calculate the current real degree */
 		unsigned int deg = real_deg(i);

@@ -96,7 +96,7 @@ int MVGraph::DDFS(nodeid green_top, nodeid red_top){
 					fprintf(stderr,"DDFS(): red_before invalid when used!\n");
 				}
 				Nr = red_before;
-				int tmp_itt = red_before.first;
+				nodeid tmp_itt = red_before.first;
 				while(nodes[tmp_itt].above != UNSET) {
 					reset_current = nodes[tmp_itt].above;
 					for(const nodeid& reset_itt : nodes[reset_current].preds) {

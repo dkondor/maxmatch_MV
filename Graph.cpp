@@ -5,6 +5,10 @@
 
 /* constructor, taking a simple graph class */
 MVGraph::MVGraph(graph& g) {
+	matchnum = 0;
+	bridgenum = 0;
+	todonum = 0;
+	
 	/* simply move edges from the other graph */
 	edges = g.edges;
 	g.edges = 0;
@@ -26,7 +30,7 @@ MVGraph::MVGraph(graph& g) {
 
 
 
-void MVGraph::add_to_level(int level, nodeid node) {
+void MVGraph::add_to_level(unsigned int level, nodeid node) {
 	if(level >= levels.size()) levels.resize(level+1);
 	levels[level].push_back(node);
   //~ add_to_list(get(g->levels,level),node);
@@ -34,7 +38,7 @@ void MVGraph::add_to_level(int level, nodeid node) {
 }
 
 
-void MVGraph::add_to_bridges(int level, nodeid n1, nodeid n2) {
+void MVGraph::add_to_bridges(unsigned int level, nodeid n1, nodeid n2) {
 	if(level >= bridges.size()) bridges.resize(level+1);
 	bridges[level].push_back(MVBridge(n1,n2));
 	bridgenum++;;
@@ -59,7 +63,7 @@ void MVGraph::greedy_init() {
 	for(nodeid j = 0; j < nodes.size(); j++) {
 		MVNode& n = nodes[j];
 		if(n.match == UNMATCHED) {
-			for(int k=0;k<n.degree;k++) {
+			for(unsigned int k=0;k<n.degree;k++) {
 				nodeid i = edges[n.edges_idx + k];
 				if(nodes[i].match == UNMATCHED) {
 					n.match = i;
