@@ -117,8 +117,8 @@ bool MVGraph::MAX(unsigned int i) {
 				nodes[itt].set_max_level(current_ten - nodes[itt].min_level);
 				add_to_level(nodes[itt].max_level,itt);
 				for(nodeid& hanging : nodes[itt].hanging_bridges) {
-					int hanging_ten = tenacity(itt,hanging);
-					if(hanging_ten != -1) add_to_bridges((hanging_ten-1)/2,itt,hanging);
+					unsigned int hanging_ten = tenacity(itt,hanging);
+					if(hanging_ten != UNSET) add_to_bridges((hanging_ten-1)/2,itt,hanging);
 				}
 			}
 		}
