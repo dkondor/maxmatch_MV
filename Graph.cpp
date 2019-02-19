@@ -13,6 +13,7 @@ MVGraph::MVGraph(graph& g) {
 	edges = g.edges;
 	g.edges = 0;
 	if(!g.edges_owned) v_edges.swap(g.edges_vect);
+	edges_owned = g.edges_owned;
 	edges_size = g.nedges;
 	
 	/* allocate nodes, copy important parameters */

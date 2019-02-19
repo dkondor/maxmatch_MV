@@ -32,7 +32,7 @@ struct MVGraph{
 	nodeid* edges;
 	bool edges_owned; /* if true, the edges array should be freed in the destructor */
 	size_t edges_size;
-	std::vector<std::vector<int> > levels;
+	std::vector<std::vector<nodeid> > levels;
 	std::vector<std::vector<MVBridge> > bridges;
 	std::vector<MVEdge> green_stack;
 	std::vector<MVEdge> red_stack;
@@ -102,7 +102,7 @@ struct MVGraph{
 	inline void prepare_next(MVEdge& Nx);
 	void step_into(nodeid& C, MVEdge& Nx, std::vector<MVEdge>& S, nodeid green_top, nodeid red_top);
 	/* gives the level of the node you would step into */
-	inline int L(const MVEdge& e) const {
+	inline unsigned int L(const MVEdge& e) const {
 		nodeid n = bud_star(e.second);
 		return nodes[n].min_level;
 	}

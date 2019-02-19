@@ -48,12 +48,12 @@ struct MVNode{
 		set_defaults();
 	}
 	
-	inline void set_min_level(int level) {
+	inline void set_min_level(unsigned int level) {
 		min_level = level;
 		if(level%2) odd_level = level;
 		else even_level = level;
 	}
-	inline void set_max_level(int level) {
+	inline void set_max_level(unsigned int level) {
 		max_level = level;
 		if(level%2) odd_level = level;
 		else even_level = level;
@@ -62,7 +62,7 @@ struct MVNode{
 	inline bool inner() const { return even_level >= odd_level; }
 	
 	void set_defaults() {
-		min_level = INT32_MAX;
+		min_level = UNSET;
 		max_level = UNSET;
 		odd_level = UNSET;
 		even_level = UNSET;

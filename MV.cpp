@@ -11,10 +11,12 @@ void MVGraph::max_match() {
 	}
 	
 	bool found = max_match_phase();
+	unsigned int phase = 1;
 	while(nodes.size() / 2 > matchnum && found){
 		//~ debug("===================================");
 		reset();
 		found = max_match_phase();
+		phase++;
 		//~ debug("===================================");
 	}
 }
@@ -65,7 +67,10 @@ void MVGraph::MIN(unsigned int i) {
 		//~ fprintf(stderr,"MVGraph::MIN(): no nodes on level %d!\n",i);
 		return;
 	}
-	for(int& current : levels[i]) {
+	
+	for(size_t k = 0; k < levels[i].size(); k++) {
+	//~ for(nodeid& current : levels[i]) { -- has to use for-loop as levels[i] might change
+		nodeid current = levels[i][k];
 		todonum--;
 		MVNode& n = nodes[current];
 		if(i%2==0) {
@@ -86,7 +91,13 @@ bool MVGraph::MAX(unsigned int i) {
 		//~ fprintf(stderr,"MVGraph::MAX(): no bridges on level %d!\n",i);
 		return false;
 	}
-	for(const MVBridge& current : bridges[i]) {
+	
+	/* note: need to use for loop (instead of C++ style foreach loop) as new items
+	 * can be inserted to bridges[i] during the loop, possibly invalidating iterators */
+	for(size_t j = 0; j < bridges[i].size(); j++) {
+	
+	//~ for(const MVBridge& current : bridges[i]) {
+		MVBridge current = bridges[i][j];
 		bridgenum--;
 		nodeid n1 = current.first;
 		nodeid n2 = current.second;
