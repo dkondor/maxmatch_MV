@@ -74,7 +74,7 @@ nodeid MVGraph::walk_blossom_down(nodeid cur, nodeid before) {
   //~ debug("Walk blossom down: %i\n",cur->N);  
 	if(before==UNSET) before = cur;
 	nodeid b = bud(cur);
-	while(cur && cur != b) {
+	while(cur != UNSET && cur != b) {
 		if( nodes[cur].ddfs_green != nodes[before].ddfs_green ||
 				nodes[cur].ddfs_red != nodes[before].ddfs_red)
 			//Step into a blossom
