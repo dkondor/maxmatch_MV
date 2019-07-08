@@ -1,14 +1,7 @@
 /*
  * graph.cpp -- simple graph implementation storing it as a list of edges
- * 	includes implementation for finding connected components of a symmetric graph
- * 	and an implementation of finding a maximum matching for a bipartite graph
- * 		or DAG using the Hopcroft-Karp algorithm
  * 
  * Copyright 2018 Daniel Kondor <kondor.dani@gmail.com>
- * 
- * Hopcroft-Karp algorithm adapted from
- * http://www.geeksforgeeks.org/hopcroft-karp-algorithm-for-maximum-matching-set-2-implementation/
- * (no license provided for it)
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,17 +38,52 @@
 /* 3-4. common interface for creating the edges after copying the out-edges to the edges array and using a separate in-edges array */
 int graph::create_graph(unsigned int* in_edges, std::unordered_map<unsigned int,unsigned int>* ids_map) {
 	/* note: clear has been called before at this point and out-edges are stored in the edges array */
-	/* 1. sort edges using zip iterators */
+	
+	/* 1. replace ids here if needed to avoid sorting twice */
+	if(ids_map) {
+		unsigned int n = 0;
+		for(uint64_t i = 0; i < nedges; i++) {
+			auto x = ids_map->find(in_edges[i]);
+			if(x == ids_map->end()) {
+				ids_map->insert(std::make_pair(in_edges[i],n));
+				in_edges[i] = n;
+				n++;
+			}
+			else in_edges[i] = x->second;
+			x = ids_map->find(edges[i]);
+			if(x == ids_map->end()) {
+				ids_map->insert(std::make_pair(edges[i],n));
+				edges[i] = n;
+				n++;
+			}
+			else edges[i] = x->second;
+		}
+	}
+	
+	/* 2. sort edges using zip iterators */
 	zi::zip_it<unsigned int*,unsigned int*> e = zi::make_zip_it(in_edges,edges);
 	zi::zip_it<unsigned int*,unsigned int*> end = zi::make_zip_it(in_edges+nedges,edges+nedges);
 	std::sort(e,end,[](const auto& a, const auto& b) {
-			return a.first < b.first;
+			return (a.first < b.first || (a.first == b.first && a.second < b.second));
 		});
-	/* 2. call the general interface creating the node objects */
-	return create_graph_sorted(e,end,ids_map,false);
+	
+	/* 3. remove duplicate edges */
+	auto new_end = std::unique(e,end);
+	if(new_end != end) {
+		size_t new_size = new_end - e;
+		unsigned int* tmp = (unsigned int*)realloc(edges,new_size*sizeof(unsigned int));
+		if(tmp) {
+			edges = tmp;
+			edges_size = new_size;
+		}
+		nedges = new_size;
+	}
+	
+	/* 4. call the general interface creating the node objects */
+	return create_graph_sorted(e,new_end,0,false);
 }
 		
-		
+
 /* 4. create graph of edges supplied as two C-style arrays
  * edges point as e1[i] -> e2[i]
  * the e2 array is "taken over" by this instance, it should not be freed by the caller later

@@ -1,23 +1,34 @@
-/*
+/*  -*- C++ -*-
  * graph_simple.h -- simple graph implementation storing it as a list of edges
  * 	helper to load graph used for symmetric maximum matching
  * 
  * Copyright 2018 Daniel Kondor <kondor.dani@gmail.com>
  * 
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
  * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above
+ *   copyright notice, this list of conditions and the following disclaimer
+ *   in the documentation and/or other materials provided with the
+ *   distribution.
+ * * Neither the name of the  nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
  * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * 
  */
@@ -114,6 +125,9 @@ class graph {
 		}*/
 		
 		friend class MVGraph;
+		
+		unsigned int get_nodes_size() const { return nnodes; }
+		uint64_t get_edges_size() const { return nedges; }
 	
 	protected:
 		unsigned int nnodes;
@@ -188,8 +202,9 @@ int graph::create_graph_sorted(it& e, const sent& end, std::unordered_map<unsign
 	uint64_t j = 0; // edge index
 	bool first = true;
 	unsigned int max_out_edge = 0;
+	bool out_edges_sorted = true;
 	
-	for(;e != end;++e,j++) {
+	for(;e != end;++e) {
 		/* note: potentially using zip_iterators, so cannot use e->first;
 		 * but can use any other iterator returning an std::pair<unsigned int, unsigned int> */
 		unsigned int id1 = (*e).first;
@@ -227,12 +242,17 @@ int graph::create_graph_sorted(it& e, const sent& end, std::unordered_map<unsign
 			deg = 0;
 			last_id = id1;
 		}
+		else {
+			if(id2 < edges[j-1]) out_edges_sorted = false;
+			else if(id2 == edges[j-1] && copy_out_edges) continue; /* note: omit duplicate edges here as well */
+		}
 		if(!ids_map) if(id2 > max_out_edge) max_out_edge = id2;
 		deg++;
 		if(copy_out_edges) {
 			if(j == edges_size) if(grow_edges()) { fprintf(stderr,"graph::create_graph_sorted(): could not allocate memory!\n"); return 1; }
 			edges[j] = id2;
 		}
+		j++;
 	}
 	outdeg[i] = deg;
 	
@@ -259,6 +279,17 @@ int graph::create_graph_sorted(it& e, const sent& end, std::unordered_map<unsign
 		idx[i] = nedges;
 		outdeg[i] = 0;
 	}
+	
+	/* ensure that out edges are still sorted (required by make_symmetric())
+	 * required if we found that the out edges were not sorted for any node
+	 * or if we replaced ids in out edges, as in that case, we cannot be sure
+	 * about the order there */
+	if(!out_edges_sorted || ids_map) for(j=0;j<i;j++) if(outdeg[j] > 1) {
+		unsigned int* start = edges + idx[j];
+		unsigned int* end = edges + idx[j] + outdeg[j];
+		std::sort(start,end);
+	}
+	
 	nnodes = i;
 	return 0;
 }
@@ -272,14 +303,36 @@ int graph::create_graph_partitioned(it& e, const sent& end, std::unordered_map<u
 		
 
 /* 2. Create graph with sorting the edges using the supplied iterators (which should be random access
- * 	iterators to std::pair<unsigned int, unsigned int>) */
+ * 	iterators to std::pair<unsigned int, unsigned int>)
+ * note: this function modifies the elements referred to by the iterators (by sorting and possible relabeling IDs) */
 template<class it, class sent>
 int graph::create_graph_in_place_sort(it& e, const sent& end, std::unordered_map<unsigned int,unsigned int>* ids_map) {
 	clear();
+	/* replace ids first (if needed) */
+	if(ids_map) {
+		unsigned int n = 0;
+		for(it i = e; i != end; ++i) {
+			auto x = ids_map->find(i->first);
+			if(x == ids_map->end()) {
+				ids_map->insert(std::make_pair(i->first,n));
+				i->first = n;
+				n++;
+			}
+			else i->first = x->second;
+			x = ids_map->find(i->second);
+			if(x == ids_map->end()) {
+				ids_map->insert(std::make_pair(i->second,n));
+				i->second = n;
+				n++;
+			}
+			else i->second = x->second;
+		}
+	}
 	std::sort(e,end,[](const std::pair<unsigned int,unsigned int> a, const std::pair<unsigned int,unsigned int> b) {
-			return a.first < b.first;
+			return (a.first < b.first || (a.first == b.first && a.second < b.second) );
 		});
-	return create_graph_sorted(e,end,ids_map,true);
+	end = std::unique(e,end);
+	return create_graph_sorted(e,end,0,true); /* we do not pass ids_map, it was already taken care of before */
 }
 
 /* 3. create a graph from edges supplied as iterators of std::pair<unsigned int,unsigned int>
