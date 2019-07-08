@@ -92,9 +92,9 @@ nodeid MVGraph::walk_blossom_down(nodeid cur, nodeid before) {
 //Walks up untill it reaches a bridge
 //It does add the bridge and the node it starts on
 nodeid MVGraph::walk_blossom_up(nodeid cur) {
-	if(cur == UNSET) handle_error("MVGraph::walk_blossom_up(): cur is UNSET!\n");
   //~ debug("Walk blossom up: %i\n",cur->N);  
 	while(/*cur != UNSET*/ true) { // note: cur != UNSET when calling this function
+		if(cur == UNSET) handle_error("MVGraph::walk_blossom_up(): cur is UNSET!\n");
 		path_found.push_back(cur);
 		if(nodes[cur].above == UNSET) break;
 		nodeid bud = nodes[nodes[cur].above].below;
