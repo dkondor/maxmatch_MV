@@ -53,9 +53,11 @@ class graph {
 	public:
 		graph():nnodes(0),nedges(0),edges(0),outdeg(0),idx(0),edges_size(0),nodes_size(0),edges_owned(true) {  }
 		void clear() {
-			if(edges_owned) if(edges) free(edges);
-			edges_vect.clear(); edges = 0;
-			if(outdeg) free(outdeg); if(idx) free(idx); outdeg = 0; idx = 0;
+			if(edges_owned && edges) free(edges);
+			if(outdeg) free(outdeg);
+			if(idx) free(idx);
+			edges_vect.clear();
+			edges = 0; outdeg = 0; idx = 0;
 			nnodes = 0; nedges = 0; edges_size = 0; nodes_size = 0;
 		}
 		~graph() { clear(); }
