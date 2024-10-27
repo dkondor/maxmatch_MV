@@ -38,6 +38,8 @@
 #define TSV_ITERATOR_H
 
 #include "read_table.h"
+#include <stdexcept>
+#include <iterator>
 
 /* throw exception, but make sure it's displayed on stderr as well */
 static inline void handle_error(const char* msg) {
