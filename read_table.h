@@ -83,8 +83,8 @@ f.close(); // close file separately -- r should not be used after this point
 
  */
 
-#ifndef _READ_TABLE_H
-#define _READ_TABLE_H
+#ifndef READ_TABLE_H
+#define READ_TABLE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,12 +95,10 @@ f.close(); // close file separately -- r should not be used after this point
 
 #ifdef __cplusplus
 #include <cmath>
-static inline bool _isnan(double x) { return std::isnan(x); }
-static inline bool _isinf(double x) { return std::isinf(x); }
+using std::isnan;
+using std::isinf;
 #else
 #include <math.h>
-static inline int _isnan(double x) { return isnan(x); }
-static inline int _isinf(double x) { return isinf(x); }
 #endif
 
 
@@ -192,6 +190,7 @@ static int read_table_line_skip(read_table* r, int skip) {
 	if(!r) return 1;
 	if(r->last_error == T_EOF || r->last_error == T_COPIED ||
 		r->last_error == T_ERROR_FOPEN) return 1;
+	if(!(r->f)) { r->last_error = T_READ_ERROR; return 1; }
 	while(1) {
 		ssize_t len = getline(&(r->buf),&(r->buf_size),r->f);
 		if(len < 0) {
@@ -206,7 +205,8 @@ static int read_table_line_skip(read_table* r, int skip) {
 		r->pos = 0;
 		if(skip) {
 			for(; r->pos < r->line_len; r->pos++)
-				if( ! (r->buf[r->pos] == ' ' || r->buf[r->pos] == '\t') ) break;
+				if( ! (r->buf[r->pos] == ' ' || r->buf[r->pos] == '\t' 
+					|| r->buf[r->pos] == '\r' || r->buf[r->pos] == '\n') ) break;
 			if(r->comment) if(r->buf[r->pos] == r->comment) continue; /* check for comment character first */
 			if(r->pos < r->line_len) break; /* there is some data in the line */
 		}
@@ -327,14 +327,16 @@ static int read_table_int32_limits(read_table* r, int32_t* i, int32_t min, int32
 	errno = 0;
 	char* c2;
 	long res = strtol(r->buf + r->pos, &c2, r->base);
+	/* check for format errors first and advance the position */
+	if(read_table_post_check(r,c2)) return 1;
+	
 	/* check that result fits in 32-bit integer -- long might be 64-bit */
 	if(res > (long)max || res < (long)min) {
 		r->last_error = T_OVERFLOW;
 		return 1;
 	}
 	*i = res; /* store potential result */
-	/* advance position after the number, check if there is proper field separator */
-	return read_table_post_check(r,c2);
+	return 0;
 }
 /* default behavior for the previous, whole range is OK */
 static inline int read_table_int32(read_table* r, int32_t* i) {
@@ -352,6 +354,9 @@ static int read_table_int64_limits(read_table* r, int64_t* i, int64_t min, int64
 	long long res2;
 	if(LONG_MAX >= INT64_MAX && LONG_MIN <= INT64_MIN) {
 		res = strtol(r->buf + r->pos, &c2, r->base);
+		/* check for format errors first and advance the position */
+		if(read_table_post_check(r,c2)) return 1;
+		
 		/* note: this check might be unnecessary */
 		if(res > (long)max || res < (long)min) {
 			r->last_error = T_OVERFLOW;
@@ -361,14 +366,16 @@ static int read_table_int64_limits(read_table* r, int64_t* i, int64_t min, int64
 	}
 	else {
 		res2 = strtoll(r->buf + r->pos, &c2, r->base);
+		/* check for format errors first and advance the position */
+		if(read_table_post_check(r,c2)) return 1;
+		
 		if(res2 > (long long)max || res2 < (long long)min) {
 			r->last_error = T_OVERFLOW;
 			return 1;
 		}
 		*i = res2; /* store potential result */
 	}
-	/* advance position after the number, check if there is proper field separator */
-	return read_table_post_check(r,c2);
+	return 0;
 }
 static inline int read_table_int64(read_table* r, int64_t *i) {
 	return read_table_int64_limits(r,i,INT64_MIN,INT64_MAX);
@@ -388,14 +395,16 @@ static int read_table_uint32_limits(read_table* r, uint32_t* i, uint32_t min, ui
 		return 1;
 	}
 	unsigned long res = strtoul(r->buf + r->pos, &c2, r->base);
+	/* check for format errors first and advance the position */
+	if(read_table_post_check(r,c2)) return 1;
+	
 	/* check that result fits in 32-bit integer -- long might be 64-bit */
-	if(res > (unsigned long)max || res < (unsigned int)min) {
+	if(res > (unsigned long)max || res < (unsigned long)min) {
 		r->last_error = T_OVERFLOW;
 		return 1;
 	}
 	*i = res; /* store potential result */
-	/* advance position after the number, check if there is proper field separator */
-	return read_table_post_check(r,c2);
+	return 0;
 }
 static inline int read_table_uint32(read_table* r, uint32_t* i) {
 	return read_table_uint32_limits(r,i,0,UINT32_MAX);
@@ -419,6 +428,9 @@ static int read_table_uint64_limits(read_table* r, uint64_t* i, uint64_t min, ui
 	unsigned long long res2;
 	if(ULONG_MAX >= UINT64_MAX) {
 		res = strtoul(r->buf + r->pos, &c2, r->base);
+		/* check for format errors first and advance the position */
+		if(read_table_post_check(r,c2)) return 1;
+		
 		/* note: this check might be unnecessary */
 		if(res > (unsigned long)max || res < (unsigned long)min) {
 			r->last_error = T_OVERFLOW;
@@ -428,14 +440,16 @@ static int read_table_uint64_limits(read_table* r, uint64_t* i, uint64_t min, ui
 	}
 	else {
 		res2 = strtoull(r->buf + r->pos, &c2, r->base);
-		if(res2 > (unsigned long long)max || res < (unsigned long long)min) {
+		/* check for format errors first and advance the position */
+		if(read_table_post_check(r,c2)) return 1;
+		
+		if(res2 > (unsigned long long)max || res2 < (unsigned long long)min) {
 			r->last_error = T_OVERFLOW;
 			return 1;
 		}
 		*i = res2; /* store potential result */
 	}
-	/* advance position after the number, check if there is proper field separator */
-	return read_table_post_check(r,c2);
+	return 0;
 }
 static inline int read_table_uint64(read_table* r, uint64_t* i) {
 	return read_table_uint64_limits(r,i,0,UINT64_MAX);
@@ -478,7 +492,7 @@ static int read_table_double(read_table* r, double* d) {
 	/* advance position after the number, check if there is proper field separator */
 	if(read_table_post_check(r,c2)) return 1;
 	if((r->flags & READ_TABLE_ALLOW_NAN_INF) == 0) {
-		if(_isnan(*d) || _isinf(*d)) {
+		if(isnan(*d) || isinf(*d)) {
 			r->last_error = T_NAN;
 			return 1;
 		}
@@ -491,7 +505,7 @@ static int read_table_double_limits(read_table* r, double* d, double min, double
 	char* c2;
 	*d = strtod(r->buf + r->pos, &c2);
 	if(read_table_post_check(r,c2)) return 1;
-	if(_isnan(*d)) {
+	if(isnan(*d)) {
 		r->last_error = T_NAN;
 		return 1;
 	}
@@ -617,8 +631,7 @@ struct read_table2 : public read_table {
 		}
 		/* read next line into the internal buffer */
 		bool read_line(bool skip = true) {
-			if(skip) return (read_table_line_skip(this,1)==0);
-			else return (read_table_line_skip(this,0)==0);
+			return (read_table_line_skip(this,skip) == 0);
 		}
 		/* try to parse one value from the currently read line
 		 * T can be 16, 32 or 64 bit signed or unsigned int or double */
@@ -688,7 +701,7 @@ struct read_table2 : public read_table {
 		size_t get_pos() const { return pos; }
 		size_t get_col() const { return col; }
 		/* set filename (for better formatting of diagnostic messages) */
-		void set_fn(const char* fn_) { fn = fn; }
+		void set_fn(const char* fn_) { fn = fn_; }
 		/* get current line string */
 		const char* get_line_str() const { return read_table_get_line_str(this); }
 		
